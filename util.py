@@ -36,8 +36,8 @@ def show_results(cmi_lag_records, **kwargs):
     # 绘制均值变化
     cmi_bt_means = [np.mean(cmi_lag_records["bt_records"][lag]) for lag in lags2test]
     cmi_bg_means = [np.mean(cmi_lag_records["bg_records"][lag]) for lag in lags2test]
-    plt.plot(lags2test, cmi_bt_means, color="b", label="bt_mean")
-    plt.plot(lags2test, cmi_bg_means, color="r", label="bg_mean")
+    plt.plot(lags2test, cmi_bt_means, linewidth=1.0, color="b", label="bt_mean")
+    plt.plot(lags2test, cmi_bg_means, linewidth=1.0, color="r", label="bg_mean")
     
     # 添加基准线
     plt.axvline(0, color="r", label="lag = 0", alpha=0.5, linewidth=0.5)

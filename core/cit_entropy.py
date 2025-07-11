@@ -144,7 +144,7 @@ def stdize_values(x: np.ndarray, dtype: str, noise_scale: float = 1e-6) -> np.nd
         raise ValueError(f"Invalid dtype {dtype}")
 
 
-def kraskov_mi(x, y, z = None, k = 3, base = np.e, alpha = 0, noise_scale: float = 1e-6) -> float:
+def kraskov_mi(x, y, z = None, k = 3, base = np.e, alpha = 0, noise_scale: float = 1e-12) -> float:
     """
     计算x和y的互信息（如果z不为None，则为条件互信息）
     如果x是一维标量且我们有四个样本，x和y应该是向量的列表，例如x = [[1.3], [3.7], [5.1], [2.4]]
@@ -205,7 +205,7 @@ def cal_cmi(x: np.ndarray, y: np.ndarray, z: np.ndarray, **kwargs) -> float:
     """
     x = np.array(x).flatten()
     y = np.array(y).flatten()
-    z = np.array(z).flatten()
+    z = np.array(z).reshape(len(z), -1)
     
     # <<--------------------------------------------------------------------------------------------
     # mi_xy_z = kraskov_mi(np.c_[x, y], z, **kwargs)
@@ -215,7 +215,7 @@ def cal_cmi(x: np.ndarray, y: np.ndarray, z: np.ndarray, **kwargs) -> float:
 
     # cmi = mi_xy_z + mi_x_y - mi_x_z - mi_y_z
     # <<--------------------------------------------------------------------------------------------
-    cmi = kraskov_mi(x, y, z, alpha=0.1, **kwargs)
+    cmi = kraskov_mi(x, y, z, **kwargs)
     # >>--------------------------------------------------------------------------------------------
     
     return cmi
