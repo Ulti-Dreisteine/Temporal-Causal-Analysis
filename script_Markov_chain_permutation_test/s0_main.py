@@ -74,6 +74,26 @@ class MarkovChainGenerator(object):
 
         return X_samples, Y_samples
     
+    def show(self, X_samples: np.ndarray, Y_samples: np.ndarray):
+        """
+        显示生成的样本序列
+        """
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(5, 4))
+        plt.subplot(2, 1, 1)
+        plt.plot(X_samples[0], label="$X$", color="k", linewidth=1.0)
+        plt.ylabel("state")
+        plt.legend(loc="upper right")
+
+        plt.subplot(2, 1, 2)
+        plt.plot(Y_samples[0], label="$Y$", color="k", linewidth=1.0)
+        plt.xlabel("step")
+        plt.ylabel("state")
+        plt.legend(loc="upper right")
+
+        plt.tight_layout()
+
 
 def gen_Markov_surrogate(series: np.ndarray, order=1):
     """
@@ -146,72 +166,76 @@ if __name__ == "__main__":
     N_steps = 200
     X_samples, Y_samples = self.exec_multi_trials(N_trials, N_steps)
 
-    # ---- 独立检验 ----------------------------------------------------------------------------------
+    # 画图
+    self.show(X_samples, Y_samples)
+    plt.savefig("runtime/samples.png", dpi=600)
 
-    # 真实的背景互信息分布
-    mi_true = np.zeros(N_trials)
-    for i in range(N_trials):
-        mi_true[i] = cal_mi(X_samples[i], Y_samples[i])
+    # # ---- 独立检验 ----------------------------------------------------------------------------------
 
-    # 基于置换的互信息分布
-    mi_perm_dict = defaultdict(list)
+    # # 真实的背景互信息分布
+    # mi_true = np.zeros(N_trials)
+    # for i in range(N_trials):
+    #     mi_true[i] = cal_mi(X_samples[i], Y_samples[i])
 
-    for i in range(N_trials):
-        X_perm_rand = np.random.permutation(X_samples[i])
-        mi_perm_dict["rand"].append(cal_mi(X_perm_rand, Y_samples[i]))
+    # # 基于置换的互信息分布
+    # mi_perm_dict = defaultdict(list)
+
+    # for i in range(N_trials):
+    #     X_perm_rand = np.random.permutation(X_samples[i])
+    #     mi_perm_dict["rand"].append(cal_mi(X_perm_rand, Y_samples[i]))
     
-    for i in range(N_trials):
-        X_perm_Markov = gen_Markov_surrogate(X_samples[8], order=1)
-        mi_perm_dict["Markov"].append(cal_mi(X_perm_Markov, Y_samples[i]))
+    # for i in range(N_trials):
+    #     X_perm_Markov = gen_Markov_surrogate(X_samples[8], order=1)
+    #     mi_perm_dict["Markov"].append(cal_mi(X_perm_Markov, Y_samples[i]))
 
-    # ---- 绘图 -------------------------------------------------------------------------------------
+    # # ---- 绘图 -------------------------------------------------------------------------------------
 
-    bins = 50
-    range_ = (-0.3, 0.4)
-    density = True
-    histtype = "step"
-    linewidth = 1.5
+    # bins = 50
+    # range_ = (-0.3, 0.4)
+    # density = True
+    # histtype = "step"
+    # linewidth = 1.5
 
-    plt.figure(figsize=(5, 3))
-    plt.hist(
-        mi_true, 
-        bins=bins, 
-        alpha=1, 
-        range=range_, 
-        label="True MI", 
-        color="blue", 
-        density=density, 
-        histtype=histtype, 
-        linewidth=linewidth)
-    plt.hist(
-        mi_perm_dict["rand"],
-        bins=bins, 
-        alpha=1, 
-        range=range_, 
-        label="Permuted MI (Random)", 
-        color="red", 
-        density=density, 
-        histtype=histtype, 
-        linewidth=linewidth,
-        linestyle="dashed"
-    )
-    plt.hist(
-        mi_perm_dict["Markov"],
-        bins=bins, 
-        alpha=1, 
-        range=range_, 
-        label="Permuted MI (Markov)", 
-        color="green", 
-        density=density,
-        histtype=histtype, 
-        linewidth=linewidth,
-        linestyle="dashed"
-    )
-    plt.xlabel("Mutual Information")
-    plt.ylabel("Frequency")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # plt.figure(figsize=(5, 3))
+    # plt.hist(
+    #     mi_true, 
+    #     bins=bins, 
+    #     alpha=1, 
+    #     range=range_, 
+    #     label="True MI", 
+    #     color="blue", 
+    #     density=density, 
+    #     histtype=histtype, 
+    #     linewidth=linewidth)
+    # plt.hist(
+    #     mi_perm_dict["rand"],
+    #     bins=bins, 
+    #     alpha=1, 
+    #     range=range_, 
+    #     label="Permuted MI (Random)", 
+    #     color="red", 
+    #     density=density, 
+    #     histtype=histtype, 
+    #     linewidth=linewidth,
+    #     linestyle="dashed"
+    # )
+    # plt.hist(
+    #     mi_perm_dict["Markov"],
+    #     bins=bins, 
+    #     alpha=1, 
+    #     range=range_, 
+    #     label="Permuted MI (Markov)", 
+    #     color="green", 
+    #     density=density,
+    #     histtype=histtype, 
+    #     linewidth=linewidth,
+    #     linestyle="dashed"
+    # )
+    # plt.xlabel("Mutual Information")
+    # plt.ylabel("Frequency")
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
 
 
 
