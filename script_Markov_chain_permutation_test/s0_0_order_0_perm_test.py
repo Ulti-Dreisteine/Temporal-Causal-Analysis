@@ -12,6 +12,7 @@ Created on 2025/07/16 15:43:23
 """
 
 from collections import defaultdict
+from typing import Callable
 import numpy as np
 import sys
 import os
@@ -95,32 +96,38 @@ class MarkovChainGenerator(object):
         plt.tight_layout()
 
 
-def gen_Markov_surrogate(series: np.ndarray, order=1):
+def exec_perm_test(x: np.ndarray, y: np.ndarray, N_perm: int, stat_func: Callable, method: str = "monte_carlo"):
     """
-    生成马尔可夫代理序列。根据给定的时间序列，生成一个新的序列，使其尽可能遵循与原序列相同的马尔可夫性质。
+    执行排列置换检验
     """
-    # 统计转移频率
-    counts = defaultdict(lambda: defaultdict(int))
-    for i in range(len(series) - order):
-        state = tuple(series[i : i + order])
-        next_val = series[i + order]
-        counts[state][next_val] += 1
+    # 计算原始统计量
+    stat_orig = stat_func(x, y)
 
-    # 生成代理序列
-    surrogate = list(series[:order])
-    for _ in range(len(series) - order):
-        state = tuple(surrogate[-order:])
-        try:
-            next_vals, counts_ = zip(*counts[state].items())
-            probs = np.array(counts_) / sum(counts_)
-            surrogate.append(np.random.choice(next_vals, p=probs))
-        except:
-            # 如果当前状态没有下一个值的统计信息，则随机选择
-            surrogate.append(np.random.choice(series))
+    # 置换检验
+    stat_perm = np.zeros(N_perm)
 
-    surrogate = np.array(surrogate)
-    return surrogate
-    
+    if method == "permutation":
+        z = np.append(x, y)
+
+        for i in range(N_perm):
+            z_perm = np.random.permutation(z)
+            x_perm = z_perm[:len(x)]
+            y_perm = z_perm[len(x):]
+            stat_perm[i] = stat_func(x_perm, y_perm)
+    elif method == "monte_carlo":
+        for i in range(N_perm):
+            x_perm = x.copy()
+            np.random.shuffle(x_perm)
+            stat_perm[i] = stat_func(x_perm, y)
+    else:
+        raise ValueError(f"不支持的置换方法: {method}")
+        
+    # 计算p值
+    p_value = np.mean(stat_perm >= stat_orig)
+
+    return stat_orig, stat_perm, p_value
+
+
 
 # **************************************************************************************************
 # 项目工具
@@ -131,12 +138,12 @@ def gen_Pi() -> np.ndarray:
     转移概率矩阵的意义：每个当前状态开始，有一半的概率停留在当前状态，25%的概率转移到前一个状态，25%的概率转移到后一个状态。
     """
     Pi = np.array([
-        [0.5, 0.25, 0, 0, 0, 0.25],
-        [0.25, 0.5, 0.25, 0, 0, 0],
-        [0, 0.25, 0.5, 0.25, 0, 0],
-        [0, 0, 0.25, 0.5, 0.25, 0],
-        [0, 0, 0, 0.25, 0.5, 0.25],
-        [0.25, 0, 0, 0, 0.25, 0.5]
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
     ])
     return Pi
     
@@ -147,84 +154,66 @@ if __name__ == "__main__":
 
     Pi = gen_Pi()
 
-    # ---- 样本生成 ---------------------------------------------------------------------------------
+    # ---- 样本生成 ----------------------------------------------------------------------------------
 
     self = MarkovChainGenerator(Pi)
 
-    N_trials = 1000
-    N_steps = 200
+    N_trials = 100
+    N_steps = 100
     X_samples, Y_samples = self.exec_multi_trials(N_trials, N_steps)
 
     # 画图
     self.show(X_samples, Y_samples)
-    plt.savefig("runtime/samples.png", dpi=600)
+    plt.savefig("runtime/order_0.png", dpi=600)
 
-    # # ---- 独立检验 ----------------------------------------------------------------------------------
+    # ---- 单组独立性检验 ----------------------------------------------------------------------------
 
-    # # 真实的背景互信息分布
-    # mi_true = np.zeros(N_trials)
-    # for i in range(N_trials):
-    #     mi_true[i] = cal_mi(X_samples[i], Y_samples[i])
+    i = 0
+    Xi = X_samples[i]
+    Yi = Y_samples[i]
 
-    # # 基于置换的互信息分布
-    # mi_perm_dict = defaultdict(list)
+    mi_i = cal_mi(Xi, Yi)
 
-    # for i in range(N_trials):
-    #     X_perm_rand = np.random.permutation(X_samples[i])
-    #     mi_perm_dict["rand"].append(cal_mi(X_perm_rand, Y_samples[i]))
+    # 置换检验
+    N_perm = 1000
+    method = "monte_carlo"
     
-    # for i in range(N_trials):
-    #     X_perm_Markov = gen_Markov_surrogate(X_samples[8], order=1)
-    #     mi_perm_dict["Markov"].append(cal_mi(X_perm_Markov, Y_samples[i]))
+    stat_orig, stat_perm, p_value = exec_perm_test(Xi, Yi, N_perm, cal_mi, method=method)
 
-    # # ---- 绘图 -------------------------------------------------------------------------------------
+    # 画图
+    plt.figure(figsize=(5, 3))
+    plt.hist(stat_perm, bins=50, alpha=0.7, label="MI Permuted", color="red", density=True)
+    plt.axvline(stat_orig, color="blue", linestyle="dashed", linewidth=1.5, label="MI Original")
+    plt.xlabel("MI")
+    plt.ylabel("Prob. Density")
+    plt.title(f"Permutation Test: p-value = {p_value:.4f}")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"runtime/order_0_perm_test_{i}.png", dpi=600)
 
-    # bins = 50
-    # range_ = (-0.3, 0.4)
-    # density = True
-    # histtype = "step"
-    # linewidth = 1.5
+    # ---- 多组独立性检验 ----------------------------------------------------------------------------
 
-    # plt.figure(figsize=(5, 3))
-    # plt.hist(
-    #     mi_true, 
-    #     bins=bins, 
-    #     alpha=1, 
-    #     range=range_, 
-    #     label="True MI", 
-    #     color="blue", 
-    #     density=density, 
-    #     histtype=histtype, 
-    #     linewidth=linewidth)
-    # plt.hist(
-    #     mi_perm_dict["rand"],
-    #     bins=bins, 
-    #     alpha=1, 
-    #     range=range_, 
-    #     label="Permuted MI (Random)", 
-    #     color="red", 
-    #     density=density, 
-    #     histtype=histtype, 
-    #     linewidth=linewidth,
-    #     linestyle="dashed"
-    # )
-    # plt.hist(
-    #     mi_perm_dict["Markov"],
-    #     bins=bins, 
-    #     alpha=1, 
-    #     range=range_, 
-    #     label="Permuted MI (Markov)", 
-    #     color="green", 
-    #     density=density,
-    #     histtype=histtype, 
-    #     linewidth=linewidth,
-    #     linestyle="dashed"
-    # )
-    # plt.xlabel("Mutual Information")
-    # plt.ylabel("Frequency")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
+    N_perm = 100
+    p_values = np.zeros(N_trials)
+
+    for i in range(N_trials):
+        print(f"\rTrial {i}", end="")
+        sys.stdout.flush()
+        Xi = X_samples[i]
+        Yi = Y_samples[i]
+
+        mi_i = cal_mi(Xi, Yi)
+
+        # 置换检验
+        stat_orig, stat_perm, p_value = exec_perm_test(Xi, Yi, N_perm, cal_mi)
+        
+        p_values[i] = p_value
+
+    # 统计I类错误率
+    alpha = 0.01
+    type_I_error_rate = np.sum(p_values < alpha) / N_trials
+
+    print(f"\nType I Error Rate: {type_I_error_rate:.4f}")
 
 
 
