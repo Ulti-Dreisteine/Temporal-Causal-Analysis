@@ -21,6 +21,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "../" * 2))
 sys.path.insert(0, BASE_DIR)
 
 from setting import plt
+# from core.cit_entropy import kraskov_mi
 from core.dit_entropy import cal_mi
 
 
@@ -95,36 +96,25 @@ class MarkovChainGenerator(object):
         plt.tight_layout()
 
 
-def exec_perm_test(x: np.ndarray, y: np.ndarray, N_perm: int, stat_func: Callable, method: str = "monte_carlo"):
+def exec_bootstrap_test(x: np.ndarray, y: np.ndarray, N_perm: int, stat_func: Callable):
     """
     执行排列置换检验
     """
     # 计算原始统计量
     stat_orig = stat_func(x, y)
 
-    # 置换检验
-    stat_perm = np.zeros(N_perm)
+    # 生成所有bootstrap索引
+    idxs = np.random.randint(0, len(x), size=(N_perm, len(x)))
+    x_bootstrap = x[idxs]
+    y_bootstrap = y[idxs]
 
-    if method == "permutation":
-        z = np.append(x, y)
+    # 计算所有bootstrap统计量（向量化）
+    stat_bootstrap = np.array([stat_func(xb, yb) for xb, yb in zip(x_bootstrap, y_bootstrap)])
 
-        for i in range(N_perm):
-            z_perm = np.random.permutation(z)
-            x_perm = z_perm[:len(x)]
-            y_perm = z_perm[len(x):]
-            stat_perm[i] = stat_func(x_perm, y_perm)
-    elif method == "monte_carlo":
-        for i in range(N_perm):
-            x_perm = x.copy()
-            np.random.shuffle(x_perm)
-            stat_perm[i] = stat_func(x_perm, y)
-    else:
-        raise ValueError(f"不支持的置换方法: {method}")
-        
     # 计算p值
-    p_value = np.mean(stat_perm >= stat_orig)
+    p_value = np.mean(stat_bootstrap >= stat_orig)
 
-    return stat_orig, stat_perm, p_value
+    return stat_orig, stat_bootstrap, p_value
 
 
 
@@ -137,12 +127,12 @@ def gen_Pi() -> np.ndarray:
     转移概率矩阵的意义：每个当前状态开始，有一半的概率停留在当前状态，25%的概率转移到前一个状态，25%的概率转移到后一个状态。
     """
     Pi = np.array([
-        [0.5, 0.25, 0, 0, 0, 0.25],
-        [0.25, 0.5, 0.25, 0, 0, 0],
-        [0, 0.25, 0.5, 0.25, 0, 0],
-        [0, 0, 0.25, 0.5, 0.25, 0],
-        [0, 0, 0, 0.25, 0.5, 0.25],
-        [0.25, 0, 0, 0, 0.25, 0.5]
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
+        [1 / 6] * 6,
     ])
     return Pi
     
@@ -157,38 +147,13 @@ if __name__ == "__main__":
 
     self = MarkovChainGenerator(Pi)
 
-    N_trials = 1000
+    N_trials = 100
     N_steps = 100
     X_samples, Y_samples = self.exec_multi_trials(N_trials, N_steps)
 
     # 画图
     self.show(X_samples, Y_samples)
     plt.savefig("runtime/order_0.png", dpi=600)
-
-    # ---- 绘制实际关联值和置换关联值的分布 --------------------------------------------------------------
-
-    mi_true = [cal_mi(X_samples[i], Y_samples[i]) for i in range(N_trials)]
-
-    N_perm = 10000
-    method = "monte_carlo"
-
-    i = 0
-    Xi = X_samples[i]
-    Yi = Y_samples[i]
-
-    stat_orig, stat_perm, p_value = exec_perm_test(Xi, Yi, N_perm, cal_mi, method=method)
-
-    range_ = [0, 0.6]
-
-    plt.figure(figsize=(5, 3))
-    plt.hist(stat_perm, bins=50, range=range_, alpha=0.7, label="MI Permuted", color="red", density=True)
-    plt.hist(mi_true, bins=50, range=range_, alpha=0.7, label="MI True", color="blue", density=True)
-    plt.xlabel("MI")
-    plt.ylabel("Prob. Density")
-    plt.title(f"Permutation Test: p-value = {p_value:.4f}")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"runtime/order_1_dist_compar_{i}.png", dpi=600)
 
     # ---- 单组独立性检验 ----------------------------------------------------------------------------
 
@@ -201,39 +166,42 @@ if __name__ == "__main__":
     # 置换检验
     N_perm = 1000
     
-    stat_orig, stat_perm, p_value = exec_perm_test(Xi, Yi, N_perm, cal_mi, method=method)
+    stat_orig, stat_bootstrap, p_value = exec_bootstrap_test(Xi, Yi, N_perm, cal_mi)
 
     # 画图
     plt.figure(figsize=(5, 3))
-    plt.hist(stat_perm, bins=50, alpha=0.7, label="MI Permuted", color="red", density=True)
+    plt.hist(stat_bootstrap, bins=50, alpha=0.7, label="MI Permuted", color="red", density=True)
     plt.axvline(stat_orig, color="blue", linestyle="dashed", linewidth=1.5, label="MI Original")
     plt.xlabel("MI")
     plt.ylabel("Prob. Density")
-    plt.title(f"Permutation Test: p-value = {p_value:.4f}")
+    plt.title(f"Bootstrap Test: p-value = {p_value:.4f}")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"runtime/order_0_perm_test_{i}.png", dpi=600)
+    plt.savefig(f"runtime/order_0_bootstrap_test_{i}.png", dpi=600)
 
     # ---- 多组独立性检验 ----------------------------------------------------------------------------
 
-    # N_perm = 100
-    # p_values = np.zeros(N_trials)
+    N_perm = 100
+    p_values = np.zeros(N_trials)
 
-    # for i in range(N_trials):
-    #     print(f"\rTrial {i}", end="")
-    #     sys.stdout.flush()
-    #     Xi = X_samples[i]
-    #     Yi = Y_samples[i]
+    for i in range(N_trials):
+        print(f"\rTrial {i}", end="")
+        sys.stdout.flush()
+        Xi = X_samples[i]
+        Yi = Y_samples[i]
 
-    #     mi_i = cal_mi(Xi, Yi)
+        mi_i = cal_mi(Xi, Yi)
 
-    #     # 置换检验
-    #     stat_orig, stat_perm, p_value = exec_perm_test(Xi, Yi, N_perm, cal_mi)
-        
-    #     p_values[i] = p_value
+        # 置换检验
+        stat_orig, stat_bootstrap, p_value = exec_bootstrap_test(Xi, Yi, N_perm, cal_mi)
 
-    # # 统计I类错误率
-    # alpha = 0.01
-    # type_I_error_rate = np.sum(p_values < alpha) / N_trials
+        p_values[i] = p_value
 
-    # print(f"\nType I Error Rate: {type_I_error_rate:.4f}")
+    # 统计I类错误率
+    alpha = 0.01
+    type_I_error_rate = np.sum(p_values < alpha) / N_trials
+
+    print(f"\nType I Error Rate: {type_I_error_rate:.4f}")
+
+
+
