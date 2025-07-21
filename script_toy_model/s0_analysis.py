@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on 2025/07/11 13:54:43
+Created on 2025/07/21 10:35:40
 
 @File -> s0_analysis.py
 
@@ -11,13 +11,8 @@ Created on 2025/07/11 13:54:43
 @Describe: 分析
 """
 
-from sklearn.preprocessing import Normalizer
-from sklearn.neighbors import KernelDensity
 from collections import defaultdict
-from sklearn.utils import shuffle
-from scipy.stats import pearsonr
 import numpy as np
-import random
 import sys
 import os
 
@@ -25,71 +20,14 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "../" * 2))
 sys.path.insert(0, BASE_DIR)
 
 from setting import plt
-from util import show_results
+from script_toy_model.util import cal_tau
 from core.cit_entropy import cal_cmi
-from core.knn_prob_est import cal_knn_prob_dens, build_tree
+# from core.dit_entropy import cal_cmi
 
 
 # **************************************************************************************************
 # 通用工具
 # **************************************************************************************************
-
-def cal_tau(x, taus, bt_size: int, bt_rounds: int, thres: float, show: bool = False):
-    """
-    计算时延关联系数
-
-    Params:
-    -------
-    x: 输入序列，shape = (n_samples,)
-    taus: 时延序列
-    bt_size: Bootstrap采样大小
-    bt_rounds: Bootstrap重复次数
-    thres: 阈值
-    show: 是否显示结果
-    """
-    
-    # 计算时延关联系数
-    tau2r = {}
-    for tau in taus:
-        x1 = np.roll(x, tau)
-        x2 = x
-
-        idxs = np.arange(len(x1))
-        idxs = idxs[::10]
-
-        r = []
-        for i in range(bt_rounds):
-            idxs_bt = np.random.choice(idxs, bt_size, replace=True)
-
-            # 计算关联系数
-            r_bt = pearsonr(x1[idxs_bt], x2[idxs_bt])[0]
-
-            r.append(r_bt)
-        
-        tau2r[tau] = np.abs(np.mean(r))
-
-    # 以tau2r第一次低于阈值的tau作为时间常数
-    taus = list(tau2r.keys())
-    rs = list(tau2r.values())
-
-    try:
-        tau_x = taus[np.where(np.array(rs) < thres)[0][0]]
-    except:
-        print("Warning: no tau_x found, use the last tau instead.")
-        tau_x = taus[-1]
-
-    if show:
-        plt.figure(figsize = (4, 3))
-        plt.plot(list(tau2r.keys()), list(tau2r.values()), label = "r(tau)")
-        plt.xlabel("tau")
-        plt.ylabel("r(tau)")
-        plt.title(f"r(tau) = {tau_x}")
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-
-    return tau_x, tau2r
-
 
 class TDTEAnalysis(object):
     """基于TE识别变量之间的时延"""
@@ -102,178 +40,6 @@ class TDTEAnalysis(object):
 
         assert len(self.x) == len(self.y), f"len(x) = {len(self.x)} != len(y) = {len(self.y)}"
         self.N = len(self.x)
-
-    # @staticmethod
-    # def __shuffle(x: np.ndarray):
-    #     x_srg = shuffle(x)  # 无放回抽样
-    #     return x_srg
-    
-    # def tmp(self, lags2test: np.ndarray, size_bt: int, rounds_bt: int, show: bool = True, **kwargs):
-    #     cmi_lag_records = defaultdict(dict)
-
-    #     x_t_lag, y_t, y_t_tau_y = None, None, None
-    #     for lag in lags2test:
-
-    #         # 构造对应的时延样本
-    #         x_t_lag = np.roll(self.x, lag)  # 对应于 x_{t-lag} 样本
-    #         y_t = self.y  # 对应于 y_t 样本
-    #         y_t_tau_y = np.roll(self.y, self.tau_y)  # 对应于 y_{t-tau_y} 样本
-
-    #         # 截断，避免引入无关样本对TE构成误差
-    #         if lag > 0:
-    #             x_t_lag = x_t_lag[lag:]
-    #             y_t = y_t[lag:]
-    #             y_t_tau_y = y_t_tau_y[lag:]
-    #         elif lag < 0:
-    #             x_t_lag = x_t_lag[:lag]
-    #             y_t = y_t[:lag]
-    #             y_t_tau_y = y_t_tau_y[:lag]
-    #         else:
-    #             pass
-
-    #         break
-
-    #     return x_t_lag, y_t, y_t_tau_y
-    
-    # @staticmethod
-    # def __resample_iid(x_t_lag, y_t, y_t_tau_y):
-    #     samples = np.c_[x_t_lag, y_t, y_t_tau_y]
-    #     samples_norm = Normalizer().fit_transform(samples)
-
-    #     # 使用KNN估算密度
-    #     tree = build_tree(samples_norm, metric="chebyshev")
-
-    #     dens_series = np.zeros(samples_norm.shape[0])
-    #     for i in range(samples_norm.shape[0]):
-    #         dens = cal_knn_prob_dens(samples_norm[i], tree=tree, k=3, metric="chebyshev")
-    #         dens_series[i] = dens
-
-    #     weights = dens_series / np.sum(dens_series)
-
-    #     # 使用np.random.Generator提高采样效率
-    #     rng = np.random.default_rng()
-    #     idxs_rs = rng.choice(len(samples), size=len(samples), p=weights, replace=True)
-
-    #     x_t_lag = x_t_lag[idxs_rs]
-    #     y_t = y_t[idxs_rs]
-    #     y_t_tau_y = y_t_tau_y[idxs_rs]
-    #     return x_t_lag, y_t, y_t_tau_y
-
-    def compute_cmi(self, x_t_lag, y_t, x_t_lag_tau_x, y_t_tau_y, size_bt):
-        idxs = np.arange(len(y_t))
-        
-        # 无放回抽样
-        idxs_bt = np.random.choice(idxs.copy(), size_bt, replace=True)
-
-        x_t_lag_bt = x_t_lag[idxs_bt]
-        y_t_bt = y_t[idxs_bt]
-        x_t_lag_tau_x_bt = x_t_lag_tau_x[idxs_bt]
-        y_t_tau_y_bt = y_t_tau_y[idxs_bt]
-
-        # 计算CMI
-        k = 3
-        alpha = 0
-
-        z_bt = np.c_[x_t_lag_tau_x_bt, y_t_tau_y_bt]
-        cmi_bt = cal_cmi(x_t_lag_bt, y_t_bt, z_bt, k=k, alpha=alpha)
-
-        # 计算背景CMI
-        x_t_lag_srg = np.random.permutation(x_t_lag_bt)  # 随机打乱x_t_lag
-        cmi_bg = cal_cmi(x_t_lag_srg, y_t_bt, z_bt, k=k, alpha=alpha)
-
-        return cmi_bt, cmi_bg
-    
-    def exec_td_te_analysis(self, lags2test: np.ndarray, size_bt: int, rounds_bt: int, show: bool = True, **kwargs):
-        """
-        执行时延分析，挖掘x对y的作用时延
-
-        Params:
-        -------
-        lags2test: 待测试的时延范围
-        size_bt: Bootstrap样本大小
-        rounds_bt: Bootstrap重复次数
-        cmi_kwargs: CMI计算参数
-        show: 是否显示图像
-
-        Kwargs:
-        -------
-        x_col: x变量名称
-        y_col: y变量名称
-        """
-
-        cmi_lag_records = defaultdict(dict)
-
-        for lag in lags2test:
-            print(f"\rProcessing lag = {lag} ...", end="")
-            sys.stdout.flush()
-
-            # 构造对应的时延样本
-            x_t_lag = np.roll(self.x.copy(), lag)  # 对应于 x_{t-lag} 样本
-            x_t_lag_tau_x = np.roll(self.x.copy(), lag + self.tau_x)  # 对应于 x_{t-tau_x} 样本
-            y_t = self.y.copy()  # 对应于 y_t 样本
-            y_t_tau_y = np.roll(self.y.copy(), self.tau_y)  # 对应于 y_{t-tau_y} 样本
-
-            # 截断，避免引入无关样本对TE构成误差
-            if lag > 0:
-                x_t_lag = x_t_lag[lag:]
-                y_t = y_t[lag:]
-                y_t_tau_y = y_t_tau_y[lag:]
-            elif lag < 0:
-                x_t_lag = x_t_lag[:lag]
-                y_t = y_t[:lag]
-                y_t_tau_y = y_t_tau_y[:lag]
-            else:
-                pass
-
-            # 重采样，使样本满足iid条件
-            # <<------------------------------------------------------------------------------------
-            # idxs_iid = random.sample(sorted(range(len(x_t_lag))), len(x_t_lag))  # 无放回抽样
-            # x_t_lag = x_t_lag[idxs_iid]
-            # y_t = y_t[idxs_iid]
-            # y_t_tau_y = y_t_tau_y[idxs_iid]
-            # <<------------------------------------------------------------------------------------
-            # tau_max = max(self.tau_x, self.tau_y)
-            # idxs = np.arange(0, len(y_t), tau_max)
-            # x_t_lag = x_t_lag[idxs]
-            # y_t = y_t[idxs]
-            # y_t_tau_y = y_t_tau_y[idxs]
-            # <<------------------------------------------------------------------------------------
-            # x_t_lag, y_t, y_t_tau_y = self.__resample_iid(x_t_lag, y_t, y_t_tau_y)
-            # >>------------------------------------------------------------------------------------
-
-            # 基于Bootstrap的CMI测试
-            assert len(y_t) >= size_bt, f"len(y_t) = {len(y_t)} < size_bt = {size_bt}"
-
-            bt_records, bg_records = np.zeros(rounds_bt), np.zeros(rounds_bt)
-            for round in range(rounds_bt):
-                cmi_bt, cmi_bg = self.compute_cmi(x_t_lag, y_t, x_t_lag_tau_x, y_t_tau_y, size_bt)
-                bt_records[round] = cmi_bt
-                bg_records[round] = cmi_bg
-
-            bt_records = np.array(bt_records)
-            bg_records = np.array(bg_records)
-
-            cmi_lag_records["bt_records"][lag] = bt_records
-            cmi_lag_records["bg_records"][lag] = bg_records
-
-        # 扣除背景基线均值，进行校准
-        base_value = np.array([p for p in cmi_lag_records["bg_records"].values()]).mean()
-
-        for lag in cmi_lag_records["bt_records"].keys():
-            bt_records = cmi_lag_records["bt_records"][lag]
-            bg_records = cmi_lag_records["bg_records"][lag]
-
-            bt_records = bt_records - base_value
-            bg_records = bg_records - base_value
-
-            cmi_lag_records["bt_records"][lag] = bt_records
-            cmi_lag_records["bg_records"][lag] = bg_records
-
-        # 画图
-        if show:
-            show_results(cmi_lag_records, **kwargs)
-
-        return cmi_lag_records
 
 
 # **************************************************************************************************
@@ -301,7 +67,7 @@ def gen_samples(N: int, show: bool):
     a = 0.8
     b = 0.8
     c = 0.6
-    tau = 10
+    tau = 0
     
     assert tau >= 0, "tau必须大于等于0"
     assert tau <= ss_len, "tau不能大于稳态段长度"
@@ -335,57 +101,119 @@ if __name__ == "__main__":
 
     # ---- 生成样本 ---------------------------------------------------------------------------------
 
-    X_series, Y_series = gen_samples(N=10000, show=True)
+    X_series, Y_series = gen_samples(N=100000, show=True)
 
-    X_series = X_series[5000:]
-    Y_series = Y_series[5000:]
+    X_series = X_series[0:]
+    Y_series = Y_series[0:]
 
     # ---- 时间常数计算 ------------------------------------------------------------------------------
 
-    recal = True
+    recal = False  # 是否重新计算时间常数
 
     if recal:
         taus = np.arange(1, 100, 1)
-        tau_x, _ = cal_tau(X_series, taus, bt_size=100, bt_rounds=100, thres=1/np.e, show=True)
-        tau_y, _ = cal_tau(Y_series, taus, bt_size=100, bt_rounds=100, thres=1/np.e, show=True)
+        tau_x, _ = cal_tau(X_series, taus, bt_size=100, bt_rounds=100, thres=0.9, show=True)
+        tau_y, _ = cal_tau(Y_series, taus, bt_size=100, bt_rounds=100, thres=0.9, show=True)
     else:
-        tau_x = 17
-        tau_y = 22
-
-    # ---- 时序分析 ----------------------------------------------------------------------------------
+        tau_x = 1
+        tau_y = 1
+    
+    # ---- 分析 -------------------------------------------------------------------------------------
 
     self = TDTEAnalysis(X_series, Y_series, tau_x, tau_y)
 
-    lags2test = np.arange(-30 * 1, 31 * 1, 1)
+    # ---- 测试 -------------------------------------------------------------------------------------
+
+    lags2test = np.arange(-60 * 1, 61 * 1, 1)
 
     size_bt = 100
-    rounds_bt = 100
+    rounds_bt = 50
     show = True
 
-    cmi_lag_records = self.exec_td_te_analysis(lags2test, size_bt, rounds_bt, show=show)
+    cmi_lag_records = defaultdict(dict)
 
-    # ---- 临时 -------------------------------------------------------------------------------------
+    for lag in lags2test:
+        print(f"\rProcessing lag = {lag} ...", end="")
+        sys.stdout.flush()
 
-    # x_t_lag, y_t, y_t_tau_y = self.tmp(lags2test, size_bt, rounds_bt, show=show)
+        # 构造对应的时延样本
+        x_t_lag = np.roll(self.x.copy(), lag)  # 对应于 x_{t-lag} 样本
+        x_t_lag_tau_x = np.roll(self.x.copy(), lag + self.tau_x)  # 对应于 x_{t-tau_x} 样本
+        y_t = self.y.copy()  # 对应于 y_t 样本
+        y_t_tau_y = np.roll(self.y.copy(), self.tau_y)  # 对应于 y_{t-tau_y} 样本
 
-    # # 合并样本并归一化
-    # samples = np.c_[x_t_lag, y_t, y_t_tau_y]
-    # samples_norm = Normalizer().fit_transform(samples)
+        # 截断，避免引入无关样本对TE构成误差
+        if lag > 0:
+            x_t_lag = x_t_lag[lag:]
+            x_t_lag_tau_x = x_t_lag_tau_x[lag:]
+            y_t = y_t[lag:]
+            y_t_tau_y = y_t_tau_y[lag:]
+        elif lag < 0:
+            x_t_lag = x_t_lag[:lag]
+            x_t_lag_tau_x = x_t_lag_tau_x[:lag]
+            y_t = y_t[:lag]
+            y_t_tau_y = y_t_tau_y[:lag]
+        else:
+            pass
 
-    # # 使用KNN估算密度
-    # tree = build_tree(samples_norm, metric="chebyshev")
+        # ---- 基于Bootstrap的CMI测试 ----------------------------------------------------------------
 
-    # dens_lst = []
-    # for i in range(samples_norm.shape[0]):
-    #     dens = cal_knn_prob_dens(samples_norm[i], tree=tree, k=3, metric="chebyshev")
-    #     dens_lst.append(dens)
+        N = len(y_t)
+        assert N >= size_bt, f"样本长度不足：len(y_t) = {len(y_t)} < size_bt = {size_bt}"
 
-    # weights = np.array(dens_lst) / np.sum(dens_lst)
+        # 生成rounds_bt组起止索引
+        bt_idx_tuples = []
+        for _ in range(rounds_bt):
+            idx_s = np.random.randint(0, N - size_bt)
+            idx_e = idx_s + size_bt
+            bt_idx_tuples.append((idx_s, idx_e))
 
-    # # 使用np.random.Generator提高采样效率
-    # rng = np.random.default_rng()
-    # idxs_rs = rng.choice(len(samples), size=len(samples), p=weights, replace=True)
+        # 随机打乱
+        bg_idx_tuples = bt_idx_tuples.copy()
+        np.random.shuffle(bg_idx_tuples)
+        # for _ in range(rounds_bt):
+        #     idx_s = np.random.randint(0, N - size_bt)
+        #     idx_e = idx_s + size_bt
+        #     bg_idx_tuples.append((idx_s, idx_e))
 
-    # x_t_lag = x_t_lag[idxs_rs]
-    # y_t = y_t[idxs_rs]
-    # y_t_tau_y = y_t_tau_y[idxs_rs]
+        bt_records, bg_records = np.zeros(rounds_bt), np.zeros(rounds_bt)
+
+        # 计算CMI
+        k = 3
+        alpha = 0.0
+
+        for i, (idx_s, idx_e) in enumerate(bt_idx_tuples):
+            x_t_lag_bt = x_t_lag[idx_s:idx_e]
+            x_t_lag_tau_x_bt = x_t_lag_tau_x[idx_s:idx_e]
+            y_t_bt = y_t[idx_s:idx_e]
+            y_t_tau_y_bt = y_t_tau_y[idx_s:idx_e]
+
+            x_t_lag_bg = x_t_lag[bg_idx_tuples[i][0]:bg_idx_tuples[i][1]]
+            x_t_lag_tau_x_bg = x_t_lag_tau_x[bg_idx_tuples[i][0]:bg_idx_tuples[i][1]]
+
+            # 计算CMI
+            z_bt = np.c_[x_t_lag_tau_x_bt, y_t_tau_y_bt]
+            # z_bt = y_t_tau_y_bt
+            cmi_bt = cal_cmi(x_t_lag_bt, y_t_bt, z_bt, k=k, alpha=alpha)
+            bt_records[i] = cmi_bt
+
+            # 计算零假设分布指标
+            z_bg = np.c_[x_t_lag_tau_x_bg, y_t_tau_y_bt]
+            # z_bg = y_t_tau_y_bt
+            cmi_bg = cal_cmi(x_t_lag_bg, y_t_bt, z_bg, k=k, alpha=alpha)
+            bg_records[i] = cmi_bg
+        
+        cmi_lag_records["bt_records"][lag] = bt_records
+        cmi_lag_records["bg_records"][lag] = bg_records
+
+    # ---- 画图 -------------------------------------------------------------------------------------
+
+    plt.figure(figsize=(5, 4))
+    plt.plot(lags2test, [np.mean(cmi_lag_records["bt_records"][lag]) for lag in lags2test], "b", label="bt_mean")
+    plt.plot(lags2test, [np.mean(cmi_lag_records["bg_records"][lag]) for lag in lags2test], "r", label="bg_mean")
+    plt.legend()
+    plt.axvline(0, color="k", linestyle="--", linewidth=0.5)
+    plt.xlabel("Lag")
+    plt.ylabel("CMI")
+    plt.title("CMI vs Lag")
+    plt.show()

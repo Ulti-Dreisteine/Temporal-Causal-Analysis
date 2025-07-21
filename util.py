@@ -1,3 +1,4 @@
+from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -47,3 +48,30 @@ def show_results(cmi_lag_records, **kwargs):
     plt.ylabel("CMI")
     plt.legend()
     plt.show()
+
+
+def gen_Markov_surrogate(series: np.ndarray, order: int):
+    """
+    生成马尔可夫代理序列。根据给定的时间序列，生成一个新的序列，使其尽可能遵循与原序列相同的马尔可夫性质。
+    """
+    # 统计转移频率
+    counts = defaultdict(lambda: defaultdict(int))
+    for i in range(len(series) - order):
+        state = tuple(series[i : i + order])
+        next_val = series[i + order]
+        counts[state][next_val] += 1
+
+    # 生成代理序列
+    surrogate = list(series[:order])
+    for _ in range(len(series) - order):
+        state = tuple(surrogate[-order:])
+        try:
+            next_vals, counts_ = zip(*counts[state].items())
+            probs = np.array(counts_) / sum(counts_)
+            surrogate.append(np.random.choice(next_vals, p=probs))
+        except:
+            # 如果当前状态没有下一个值的统计信息，则随机选择
+            surrogate.append(np.random.choice(series))
+
+    surrogate = np.array(surrogate)
+    return surrogate

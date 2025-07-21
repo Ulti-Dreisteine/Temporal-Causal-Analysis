@@ -175,7 +175,7 @@ def kraskov_mi(x, y, z = None, k = 3, base = np.e, alpha = 0, noise_scale: float
     
     # 在联合空间中找到最近的邻居，p=inf 表示最大范数
     tree = _build_tree(points)
-    dvec = _query_neighbors(tree, points, k)
+    dvec = _query_neighbors(tree, points, k) + np.finfo(float).eps
     
     if z is None:
         a, b, c, d = _avgdigamma(x, dvec), _avgdigamma(
