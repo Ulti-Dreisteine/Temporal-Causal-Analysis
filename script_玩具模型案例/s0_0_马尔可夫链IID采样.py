@@ -21,14 +21,13 @@ sys.path.insert(0, BASE_DIR)
 
 from setting import plt
 from script_玩具模型案例.util import gen_samples
-from core.knn_prob_est import build_tree, cal_knn_prob_dens
 
 
 class MarkovChainIIDResampler(object):
     """马尔可夫链IID重采样器"""
 
-    def __init__(self, metric: str = "euclidean"):
-        self.metric = metric
+    def __init__(self):
+        pass
 
     def set_samples(self, *x) -> None:
         """
@@ -36,70 +35,34 @@ class MarkovChainIIDResampler(object):
         """
         # 将所有x合并为一个数组
         self.arr = np.column_stack([np.ravel(item) for item in x])
+        self.arr = np.atleast_2d(self.arr)
+        self.N, self.D = self.arr.shape
 
-        # 归一化
-        self.scaler = MinMaxScaler()
-        self.arr_norm = self.scaler.fit_transform(self.arr)
-
-    def __cal_prob_density(self):
+    def resample(self, N: int = None, k4rep_warn: int = 1):
         """
-        计算概率密度
+        重采样
+
+        Params:
+        -------
+        N: 重采样的样本数量，默认为None，表示与原样本数量相同
         """
-        tree = build_tree(self.arr_norm, metric=self.metric)
-
-        # <<----------------------------------------------------------------------------------------
-        prob_dens = []
-        for i in range(len(self.arr_norm)):
-            prob_dens.append(cal_knn_prob_dens(self.arr_norm[i], tree=tree, k=5))
-
-        prob_dens = np.array(prob_dens)
-        prob_dens /= np.sum(prob_dens)  # 归一化为概率分布
-
-        self.prob_dens = prob_dens
-        # ------------------------------------------------------------------------------------------
-        # N = len(self.arr_norm)
-
-        # prob_dens = np.zeros(N)
-        # for i in range(N):
-        #     prob_dens[i] = cal_knn_prob_dens(self.arr_norm[i], tree=tree, k=5)
-
-        # # 去重
-        # arr = np.concatenate([self.arr_norm, prob_dens.reshape(-1, 1)], axis=1)
-        # # 返回去重后的原始索引
-        # _, unique_idxs = np.unique(arr, axis=0, return_index=True)
-
-        # _, probs = arr[:, :-1], arr[:, -1]
-        # probs /= np.sum(probs)  # 归一化为概率分布
-
-        # self.prob_dens = probs[unique_idxs]  # 只保留去重后的概率密度
-        # >>----------------------------------------------------------------------------------------
-
-    def resample(self, N: int = None, method: str = None):
-        """重采样"""
         if N is None:
-            N = len(self.arr)
+            N = self.N
         
-        method = method or "direct"
+        # 使用直接重采样方法
+        idxs = np.random.choice(self.N, size=N, replace=True)
 
-        if method == "pi":
-            # 使用平稳分布方法
-            self.__cal_prob_density()
-            idxs = np.random.choice(len(self.arr), size=N, replace=True, p=self.prob_dens)
-        elif method == "direct":
-            # 使用直接采样方法
-            idxs = np.random.choice(len(self.arr), size=N, replace=True)
-        else:
-            raise ValueError(f"Unsupported resampling method: {method}")
-
-        arr_resampled = self.arr[idxs]
-
-        # 检查重复索引比例
-        repeat_ratio = 1 - np.unique(idxs).size / len(idxs)
+        # 统计重复索引占比
+        _, counts = np.unique(idxs, return_counts=True)
+        rep_ratio = sum(counts[counts > k4rep_warn]) / N
 
         if not hasattr(self, "_repeat_warned"):
-            if repeat_ratio > 0.1:
-                print(f"警告: 重复索引比例过高为{repeat_ratio * 100:.2f}% ，可能影响概率密度估计的准确性")
+            if rep_ratio > 0.0:
+                print(f"警告: 重复索引比例过高为{rep_ratio * 100:.2f}% ，可能影响概率密度估计的准确性")
                 self._repeat_warned = True
+        
+        # 采样
+        arr_resampled = self.arr[idxs]
 
         # 可变解析
         if arr_resampled.ndim == 1:
@@ -123,10 +86,16 @@ if __name__ == "__main__":
 
     # ---- 测试 -------------------------------------------------------------------------------------
 
-    metric = "chebyshev"
     method = "direct"
-    self = MarkovChainIIDResampler(X_series, Y_series, Z_series, metric=metric)
-    X_resampled, Y_resampled, Z_resampled = self.resample(N=200, method=method)
+    self = MarkovChainIIDResampler()
+    self.set_samples(X_series, Y_series, Z_series)
+
+    # ---- 重采样 -----------------------------------------------------------------------------------
+
+    N = 100
+    k = 2
+
+    X_resampled, Y_resampled, Z_resampled = self.resample(N=N, k4rep_warn=k)
 
     # ---- 散点图对比 --------------------------------------------------------------------------------
 

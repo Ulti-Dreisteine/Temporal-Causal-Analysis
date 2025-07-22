@@ -43,7 +43,7 @@ def _avgdigamma(points, dvec):
     返回<psi(nx)>的期望值
     """
     tree = _build_tree(points)
-    dvec = dvec - 1e-15
+    dvec -= np.finfo(float).eps  # 避免除以0
     num_points = _count_neighbors(tree, points, dvec)
     return np.mean(digamma(num_points))
 
@@ -178,15 +178,13 @@ def kraskov_mi(x, y, z = None, k = 3, base = np.e, alpha = 0, noise_scale: float
     dvec = _query_neighbors(tree, points, k)
     
     if z is None:
-        a, b, c, d = _avgdigamma(x, dvec), _avgdigamma(
-            y, dvec), digamma(k), digamma(len(x))
+        a, b, c, d = _avgdigamma(x, dvec), _avgdigamma(y, dvec), digamma(k), digamma(len(x))
         if alpha > 0:
             d += lnc_correction(tree, points, k, alpha)
     else:
         xz = np.c_[x, z]
         yz = np.c_[y, z]
-        a, b, c, d = _avgdigamma(xz, dvec), _avgdigamma(
-            yz, dvec), _avgdigamma(z, dvec), digamma(k)
+        a, b, c, d = _avgdigamma(xz, dvec), _avgdigamma(yz, dvec), _avgdigamma(z, dvec), digamma(k)
         
     return (-a - b + c + d) / log(base)
 

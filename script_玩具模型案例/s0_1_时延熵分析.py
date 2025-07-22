@@ -27,7 +27,7 @@ from script_玩具模型案例.util import gen_samples
 from script_玩具模型案例.s0_0_马尔可夫链IID采样 import MarkovChainIIDResampler
 
 # KSG互信息估计参数
-K = 6
+K = 5
 ALPHA = 0.0
 
 
@@ -84,11 +84,11 @@ class TemporalCausalEntropyAnalysis(object):
         # 初始化记录数组
         bt_records, bg_records = np.zeros(rounds_bt), np.zeros(rounds_bt)
 
-        sampler = MarkovChainIIDResampler(metric="euclidean")
+        sampler = MarkovChainIIDResampler()
         sampler.set_samples(x_t_lag, x_t_lag_tau_x, y_t, y_t_tau_y)
         for round in range(rounds_bt):
             # 重采样
-            x_t_lag_bt, x_t_lag_tau_x_bt, y_t_bt, y_t_tau_y_bt = sampler.resample(N=size_bt, method="direct")
+            x_t_lag_bt, x_t_lag_tau_x_bt, y_t_bt, y_t_tau_y_bt = sampler.resample(N=size_bt, k4rep_warn=K)
 
             # 计算CMI
             z_bt = np.c_[x_t_lag_tau_x_bt, y_t_tau_y_bt]
@@ -119,11 +119,11 @@ class TemporalCausalEntropyAnalysis(object):
         # 初始化记录数组
         bt_records, bg_records = np.zeros(rounds_bt), np.zeros(rounds_bt)
 
-        sampler = MarkovChainIIDResampler(metric="euclidean")
+        sampler = MarkovChainIIDResampler()
         sampler.set_samples(x_t_lag, x_t_lag_tau_x, y_t, y_t_tau_y)
         for round in range(rounds_bt):
             # 重采样
-            x_t_lag_bt, _, y_t_bt, y_t_tau_y_bt = sampler.resample(N=size_bt, method="direct")
+            x_t_lag_bt, _, y_t_bt, y_t_tau_y_bt = sampler.resample(N=size_bt, k4rep_warn=K)
 
             # 计算CMI
             z_bt = np.c_[y_t_tau_y_bt]
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     # ---- 单时延检验 --------------------------------------------------------------------------------
 
-    size_bt = 200
+    size_bt = 500
     rounds_bt = 100
     method = "MIT"
     show = True
