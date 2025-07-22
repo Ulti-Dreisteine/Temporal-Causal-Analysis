@@ -40,9 +40,6 @@ class MarkovChainIIDResampler(object):
         self.scaler = MinMaxScaler()
         self.arr_norm = self.scaler.fit_transform(self.arr)
 
-        # 计算概率密度
-        self.__cal_prob_density()
-
     def __cal_prob_density(self):
         """
         计算概率密度
@@ -58,18 +55,36 @@ class MarkovChainIIDResampler(object):
 
         self.prob_dens = prob_dens
 
-    def resample(self, N: int = None):
+    def resample(self, N: int = None, method: str = None):
+        """重采样"""
         if N is None:
             N = len(self.arr)
+        
+        method = method or "direct"
 
-        idxs = np.random.choice(len(self.arr), size=N, replace=True, p=self.prob_dens)
+        if method == "pi":
+            # 使用平稳分布方法
+            self.__cal_prob_density()
+            idxs = np.random.choice(len(self.arr), size=N, replace=True, p=self.prob_dens)
+        elif method == "direct":
+            # 使用直接采样方法
+            idxs = np.random.choice(len(self.arr), size=N, replace=True)
+        else:
+            raise ValueError(f"Unsupported resampling method: {method}")
+
         arr_resampled = self.arr[idxs]
+
+        # 检查重复索引比例
+        repeat_ratio = 1 - np.unique(idxs).size / len(idxs)
+        if repeat_ratio > 0.1:
+            print(f"警告: 重复索引比例过高为{repeat_ratio * 100:.2f}% ，可能影响概率密度估计的准确性")
 
         # 可变解析
         if arr_resampled.ndim == 1:
             return arr_resampled
         else:
             return [arr_resampled[:, i] for i in range(arr_resampled.shape[1])]
+
 
 if __name__ == "__main__":
 
@@ -86,8 +101,10 @@ if __name__ == "__main__":
 
     # ---- 测试 -------------------------------------------------------------------------------------
 
-    self = MarkovChainIIDResampler(X_series, Y_series, Z_series, metric="euclidean")
-    X_resampled, Y_resampled, Z_resampled = self.resample(N=200)
+    metric = "chebyshev"
+    method = "pi"
+    self = MarkovChainIIDResampler(X_series, Y_series, Z_series, metric=metric)
+    X_resampled, Y_resampled, Z_resampled = self.resample(N=200, method=method)
 
     # ---- 散点图对比 --------------------------------------------------------------------------------
 
