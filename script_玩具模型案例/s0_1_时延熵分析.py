@@ -27,7 +27,7 @@ from script_玩具模型案例.util import gen_samples
 from script_玩具模型案例.s0_0_马尔可夫链IID采样 import MarkovChainIIDResampler
 
 # KSG互信息估计参数
-K = 3
+K = 6
 ALPHA = 0.0
 
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     # ---- 生成样本 ---------------------------------------------------------------------------------
 
     tau = 10
-    X_series, Y_series = gen_samples(tau=tau, N=2000, show=True)
+    X_series, Y_series = gen_samples(tau=tau, N=1000, show=True)
 
     X_series = X_series[0:]
     Y_series = Y_series[0:]
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     # ---- 单时延检验 --------------------------------------------------------------------------------
 
-    size_bt = 100
+    size_bt = 200
     rounds_bt = 100
     method = "MIT"
     show = True
