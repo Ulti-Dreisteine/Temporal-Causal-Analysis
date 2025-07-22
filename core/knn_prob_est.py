@@ -145,22 +145,39 @@ def cal_knn_prob_dens(x: Union[np.ndarray, list], X: Optional[np.ndarray] = None
     """
     
     x = np.array(x).flatten()               # 转为一维序列
-    x = stdize_values(x, "c").flatten()     # 标准化
+    # x = stdize_values(x, "c").flatten()     # 标准化
     
     # 构建距离树
     if tree is not None:
         N, D = tree.get_arrays()[0].shape
     elif X is not None:
-        X = stdize_values(X.reshape(len(X), -1), "c")
+        # X = stdize_values(X.reshape(len(X), -1), "c")
+        X = X.reshape(len(X), -1)
+        
         N, D = X.shape
         tree = build_tree(X)
     else:
         raise ValueError("Either X or tree must be specified.")
     
-    k_dist = query_neighbors_dist(tree, x, k)[0]  # type: float
+    # <<--------------------------------------------------------------------------------------------
+    # k_dist = query_neighbors_dist(tree, x, k)[0]  # type: float
+    # v = get_unit_ball_volume(D, metric)
+    # assert v is not None, "单位球体积计算失败, 请检查维度和距离度量指标."
+    # p = (k / N) / (v * k_dist**D)
+    # ----------------------------------------------------------------------------------------------
+    k_min = k
+
+    # 增加k_min直到k_dist不为0
+    while True:
+        k_dist = query_neighbors_dist(tree, x, k_min)[0]  # type: float
+        if k_dist != 0 or k_min >= N:
+            break
+        k_min += 1
+
     v = get_unit_ball_volume(D, metric)
     assert v is not None, "单位球体积计算失败, 请检查维度和距离度量指标."
-    p = (k / N) / (v * k_dist**D)
+    p = (k_min / N) / (v * k_dist**D)
+    # >>--------------------------------------------------------------------------------------------
     
     return p
 
