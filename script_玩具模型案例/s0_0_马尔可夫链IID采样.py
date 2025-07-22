@@ -20,19 +20,20 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "../" * 2))
 sys.path.insert(0, BASE_DIR)
 
 from setting import plt
-from script_toy_model.util import gen_samples
+from script_玩具模型案例.util import gen_samples
 from core.knn_prob_est import build_tree, cal_knn_prob_dens
 
 
 class MarkovChainIIDResampler(object):
     """马尔可夫链IID重采样器"""
 
-    def __init__(self, *x, metric: str = "euclidean") -> None:
+    def __init__(self, metric: str = "euclidean"):
+        self.metric = metric
+
+    def set_samples(self, *x) -> None:
         """
         初始化，x为可变参数
         """
-        self.metric = metric
-
         # 将所有x合并为一个数组
         self.arr = np.column_stack([np.ravel(item) for item in x])
 
@@ -46,6 +47,7 @@ class MarkovChainIIDResampler(object):
         """
         tree = build_tree(self.arr_norm, metric=self.metric)
 
+        # <<----------------------------------------------------------------------------------------
         prob_dens = []
         for i in range(len(self.arr_norm)):
             prob_dens.append(cal_knn_prob_dens(self.arr_norm[i], tree=tree, k=5))
@@ -54,6 +56,23 @@ class MarkovChainIIDResampler(object):
         prob_dens /= np.sum(prob_dens)  # 归一化为概率分布
 
         self.prob_dens = prob_dens
+        # ------------------------------------------------------------------------------------------
+        # N = len(self.arr_norm)
+
+        # prob_dens = np.zeros(N)
+        # for i in range(N):
+        #     prob_dens[i] = cal_knn_prob_dens(self.arr_norm[i], tree=tree, k=5)
+
+        # # 去重
+        # arr = np.concatenate([self.arr_norm, prob_dens.reshape(-1, 1)], axis=1)
+        # # 返回去重后的原始索引
+        # _, unique_idxs = np.unique(arr, axis=0, return_index=True)
+
+        # _, probs = arr[:, :-1], arr[:, -1]
+        # probs /= np.sum(probs)  # 归一化为概率分布
+
+        # self.prob_dens = probs[unique_idxs]  # 只保留去重后的概率密度
+        # >>----------------------------------------------------------------------------------------
 
     def resample(self, N: int = None, method: str = None):
         """重采样"""
@@ -76,8 +95,11 @@ class MarkovChainIIDResampler(object):
 
         # 检查重复索引比例
         repeat_ratio = 1 - np.unique(idxs).size / len(idxs)
-        if repeat_ratio > 0.1:
-            print(f"警告: 重复索引比例过高为{repeat_ratio * 100:.2f}% ，可能影响概率密度估计的准确性")
+
+        if not hasattr(self, "_repeat_warned"):
+            if repeat_ratio > 0.1:
+                print(f"警告: 重复索引比例过高为{repeat_ratio * 100:.2f}% ，可能影响概率密度估计的准确性")
+                self._repeat_warned = True
 
         # 可变解析
         if arr_resampled.ndim == 1:
@@ -102,7 +124,7 @@ if __name__ == "__main__":
     # ---- 测试 -------------------------------------------------------------------------------------
 
     metric = "chebyshev"
-    method = "pi"
+    method = "direct"
     self = MarkovChainIIDResampler(X_series, Y_series, Z_series, metric=metric)
     X_resampled, Y_resampled, Z_resampled = self.resample(N=200, method=method)
 

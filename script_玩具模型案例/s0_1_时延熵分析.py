@@ -23,8 +23,8 @@ sys.path.insert(0, BASE_DIR)
 from setting import plt
 from util import show_results
 from core.cit_entropy import cal_cmi
-from script_toy_model.util import gen_samples
-from script_toy_model.s0_0_Markov_chain_iid_resampling import MarkovChainIIDResampler
+from script_玩具模型案例.util import gen_samples
+from script_玩具模型案例.s0_0_马尔可夫链IID采样 import MarkovChainIIDResampler
 
 # KSG互信息估计参数
 K = 3
@@ -35,7 +35,7 @@ ALPHA = 0.0
 # 通用工具
 # **************************************************************************************************
 
-class MIT(object):
+class TemporalCausalEntropyAnalysis(object):
     """基于瞬时信息传输（Momentary Information Transfer, MIT）识别变量之间的时延"""
 
     def __init__(self, x: np.ndarray, y: np.ndarray) -> None:
@@ -84,9 +84,10 @@ class MIT(object):
         # 初始化记录数组
         bt_records, bg_records = np.zeros(rounds_bt), np.zeros(rounds_bt)
 
+        sampler = MarkovChainIIDResampler(metric="euclidean")
+        sampler.set_samples(x_t_lag, x_t_lag_tau_x, y_t, y_t_tau_y)
         for round in range(rounds_bt):
             # 重采样
-            sampler = MarkovChainIIDResampler(x_t_lag, x_t_lag_tau_x, y_t, y_t_tau_y, metric="euclidean")
             x_t_lag_bt, x_t_lag_tau_x_bt, y_t_bt, y_t_tau_y_bt = sampler.resample(N=size_bt, method="direct")
 
             # 计算CMI
@@ -118,9 +119,10 @@ class MIT(object):
         # 初始化记录数组
         bt_records, bg_records = np.zeros(rounds_bt), np.zeros(rounds_bt)
 
+        sampler = MarkovChainIIDResampler(metric="euclidean")
+        sampler.set_samples(x_t_lag, x_t_lag_tau_x, y_t, y_t_tau_y)
         for round in range(rounds_bt):
             # 重采样
-            sampler = MarkovChainIIDResampler(x_t_lag, x_t_lag_tau_x, y_t, y_t_tau_y, metric="chebyshev")
             x_t_lag_bt, _, y_t_bt, y_t_tau_y_bt = sampler.resample(N=size_bt, method="direct")
 
             # 计算CMI
@@ -183,18 +185,18 @@ if __name__ == "__main__":
     # ---- 生成样本 ---------------------------------------------------------------------------------
 
     tau = 10
-    X_series, Y_series = gen_samples(tau=tau, N=1000, show=True)
+    X_series, Y_series = gen_samples(tau=tau, N=2000, show=True)
 
     X_series = X_series[0:]
     Y_series = Y_series[0:]
 
     # ---- 进行测试 ---------------------------------------------------------------------------------
 
-    self = MIT(X_series, Y_series)
+    self = TemporalCausalEntropyAnalysis(X_series, Y_series)
 
     # ---- 单时延检验 --------------------------------------------------------------------------------
 
-    size_bt = 50
+    size_bt = 100
     rounds_bt = 100
     method = "MIT"
     show = True

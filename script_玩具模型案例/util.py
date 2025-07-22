@@ -97,9 +97,9 @@ def gen_samples(tau: int, N: int, show: bool):
     X_series[:ss_len] = 0
     Y_series[:ss_len] = 0
 
-    a = 0.8
-    b = 0.8
-    c = 0.6
+    a = 0.5
+    b = 0.4
+    c = 0.5
     
     assert tau >= 0, "tau必须大于等于0"
     assert tau <= ss_len, "tau不能大于稳态段长度"
