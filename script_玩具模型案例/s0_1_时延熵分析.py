@@ -184,8 +184,8 @@ if __name__ == "__main__":
     
     # ---- 生成样本 ---------------------------------------------------------------------------------
 
-    tau = 10
-    X_series, Y_series = gen_samples(tau=tau, N=1000, show=True)
+    taus = [10, 0]
+    X_series, Y_series = gen_samples(taus=taus, N=1000, show=True)
 
     X_series = X_series[0:]
     Y_series = Y_series[0:]
@@ -196,12 +196,12 @@ if __name__ == "__main__":
 
     # ---- 单时延检验 --------------------------------------------------------------------------------
 
-    size_bt = 500
+    size_bt = 100
     rounds_bt = 100
-    method = "MIT"
+    method = "TE"
     show = True
     
-    lags2test = np.arange(-30, 31, 1)
+    lags2test = np.arange(-60, 61, 1)
 
     cmi_lag_records = self.exec_td_analysis(
         lags2test, size_bt=size_bt, rounds_bt=rounds_bt, method=method, show=show, correct_base=True)

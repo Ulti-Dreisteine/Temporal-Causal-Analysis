@@ -79,7 +79,7 @@ def cal_tau(x, taus, bt_size: int, bt_rounds: int, thres: float, show: bool = Fa
     return tau_x, tau2r
 
 
-def gen_samples(tau: int, N: int, show: bool):
+def gen_samples(taus: list, N: int, show: bool):
     """
     生成样本数据
 
@@ -97,16 +97,18 @@ def gen_samples(tau: int, N: int, show: bool):
     X_series[:ss_len] = 0
     Y_series[:ss_len] = 0
 
-    a = 0.5
-    b = 0.4
+    a = 0.7
+    b = 0.2
     c = 0.5
-    
-    assert tau >= 0, "tau必须大于等于0"
-    assert tau <= ss_len, "tau不能大于稳态段长度"
+    d = 0.5
+
+    for tau in taus:
+        assert tau >= 0, "tau必须大于等于0"
+        assert tau <= ss_len, "tau不能大于稳态段长度"
 
     for i in range(ss_len, N):
         X_series[i] = a * X_series[i - 1] + 0.01 * np.random.randn()
-        Y_series[i] = b * Y_series[i - 1] + c * X_series[i - tau] + 0.01 * np.random.randn()
+        Y_series[i] = b * Y_series[i - 1] + c * X_series[i - taus[0]] + d * X_series[i - taus[1]] + 0.01 * np.random.randn()
 
     X_series = X_series[ss_len:]
     Y_series = Y_series[ss_len:]
