@@ -18,7 +18,7 @@ def show_results(cmi_lag_records, **kwargs):
     y_max = max([max(p) for p in cmi_lag_records["bt_records"].values()])
     y_lim = y_max + 0.1 if y_max > 0.6 else 0.6
     
-    plt.figure(figsize=(5, 4))
+    plt.figure(figsize=(5, 3))
     plt.title(f"CMI of {x_col} $\\rightarrow$ {y_col} with lag")
     
     # 绘制各lag上的CMI和背景CMI散点图
