@@ -117,8 +117,8 @@ if __name__ == "__main__":
     # ---- 0阶马尔可夫链 -----------------------------------------------------------------------------
 
     Pi = gen_Pi(0)
-    N_trials = 1
-    N_steps = 10000
+    N_trials = 1000
+    N_steps = 1000
 
     self = MarkovChainGenerator(Pi)
     X_samples = self.exec_multi_trials(N_trials=N_trials, N_steps=N_steps)
@@ -148,8 +148,8 @@ if __name__ == "__main__":
     # ---- 1阶马尔可夫链 -----------------------------------------------------------------------------
 
     Pi = gen_Pi(1)
-    N_trials = 1
-    N_steps = 10000
+    N_trials = 1000
+    N_steps = 1000
 
     self = MarkovChainGenerator(Pi)
     X_samples = self.exec_multi_trials(N_trials=N_trials, N_steps=N_steps)

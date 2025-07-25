@@ -24,7 +24,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "../" * 3))
 sys.path.insert(0, BASE_DIR)
 
 from setting import plt
-from core.dit_entropy import cal_cmi
+from core.dit_entropy import cal_mi
 
 # 置换排列检验（perm）
 
@@ -152,8 +152,9 @@ if __name__ == "__main__":
 
     # ---- 载入样本 ---------------------------------------------------------------------------------
 
-    X_samples = np.load("runtime/1阶投掷_X_samples.npy")
-    Y_samples = np.load("runtime/1阶投掷_Y_samples.npy")
+    N = 100
+    X_samples = np.load("runtime/1阶投掷_X_samples.npy")[:, :N]
+    Y_samples = np.load("runtime/1阶投掷_Y_samples.npy")[:, :N]
 
     N_trials = X_samples.shape[0]
 

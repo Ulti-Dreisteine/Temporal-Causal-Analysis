@@ -152,8 +152,9 @@ if __name__ == "__main__":
 
     # ---- 载入样本 ---------------------------------------------------------------------------------
 
-    X_samples = np.load("runtime/独立投掷_X_samples.npy")
-    Y_samples = np.load("runtime/独立投掷_Y_samples.npy")
+    N = 100
+    X_samples = np.load("runtime/独立投掷_X_samples.npy")[:, :N]
+    Y_samples = np.load("runtime/独立投掷_Y_samples.npy")[:, :N]
 
     N_trials = X_samples.shape[0]
 
