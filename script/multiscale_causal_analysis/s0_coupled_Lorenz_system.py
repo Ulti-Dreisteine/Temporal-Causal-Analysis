@@ -86,7 +86,7 @@ def gen_samples(size: int, lags: List[int], alphas: List[float], show: bool = Fa
             y_2[i] = alphas[1] * y_2[i - 1] + (1 - alphas[1]) * x[i - lags[1]]
 
     # y = y_1 * y_2  # 每个时刻上的乘积耦合
-    y = 0.1 * y_1 + y_2  # 每个时刻上的加和耦合
+    y = 1 * y_1 + y_2  # 每个时刻上的加和耦合
 
     # 截去预热部分
     x = x[N_preheat:]
@@ -114,96 +114,96 @@ def gen_samples(size: int, lags: List[int], alphas: List[float], show: bool = Fa
 if __name__ == "__main__":
     x_series, y_series = gen_samples(size=10000, lags=[5, 10], alphas=[0.1, 0.9], show=True)
 
-    # ---- 多尺度分析 --------------------------------------------------------------------------------
+    # # ---- 多尺度分析 --------------------------------------------------------------------------------
 
-    m = 3  # 嵌入维度
-    scales = np.arange(1, 30 + 3, 3)
-    lags_to_test = np.arange(-30, 31)
+    # m = 3  # 嵌入维度
+    # scales = np.arange(1, 30 + 3, 3)
+    # lags_to_test = np.arange(-30, 31)
 
-    # 分析参数
-    analysis_params = {
-        "method": "MIT",
-        "size_bt": 100,
-        "rounds_bt": 20,
-        "k": 3
-    }
+    # # 分析参数
+    # analysis_params = {
+    #     "method": "MIT",
+    #     "size_bt": 100,
+    #     "rounds_bt": 20,
+    #     "k": 3
+    # }
 
-    # 预先计算符号序列，避免重复计算
-    print("预计算符号序列...")
-    tau_max = max(scales)
-    symbols_cache = {}
-    for scale in tqdm(scales):
-        symbols_cache[scale] = {
-            "x": symbolize(x_series, tau=scale, m=m, tau_max=tau_max),
-            "y": symbolize(y_series, tau=scale, m=m, tau_max=tau_max)
-        }
+    # # 预先计算符号序列，避免重复计算
+    # print("预计算符号序列...")
+    # tau_max = max(scales)
+    # symbols_cache = {}
+    # for scale in tqdm(scales):
+    #     symbols_cache[scale] = {
+    #         "x": symbolize(x_series, tau=scale, m=m, tau_max=tau_max),
+    #         "y": symbolize(y_series, tau=scale, m=m, tau_max=tau_max)
+    #     }
 
-    # 执行多尺度分析
-    print("执行多尺度分析...")
-    multiscale_results = {}
-    for scale in tqdm(scales):
-        x_symbol = symbols_cache[scale]["x"]
-        y_symbol = symbols_cache[scale]["y"]
+    # # 执行多尺度分析
+    # print("执行多尺度分析...")
+    # multiscale_results = {}
+    # for scale in tqdm(scales):
+    #     x_symbol = symbols_cache[scale]["x"]
+    #     y_symbol = symbols_cache[scale]["y"]
 
-        # 初始化分析器
-        analyzer = CausalEntropyAnalyzer(x_symbol, y_symbol)
-        analyzer.set_params(**analysis_params)
+    #     # 初始化分析器
+    #     analyzer = CausalEntropyAnalyzer(x_symbol, y_symbol)
+    #     analyzer.set_params(**analysis_params)
         
-        # 执行分析
-        results = analyzer.analyze_lag_range(lags_to_test, show_progress=False)
+    #     # 执行分析
+    #     results = analyzer.analyze_lag_range(lags_to_test, show_progress=False)
 
-        # 计算各时延上的均值
-        multiscale_results[scale] = {
-            "avg_bt": {lag: np.mean(res) for lag, res in results["bt_records"].items()},
-            "avg_bg": {lag: np.mean(res) for lag, res in results["bg_records"].items()},
-            "avg_size_bt": results["avg_size_bt"]
-        }
+    #     # 计算各时延上的均值
+    #     multiscale_results[scale] = {
+    #         "avg_bt": {lag: np.mean(res) for lag, res in results["bt_records"].items()},
+    #         "avg_bg": {lag: np.mean(res) for lag, res in results["bg_records"].items()},
+    #         "avg_size_bt": results["avg_size_bt"]
+    #     }
 
-    # ---- 结果可视化 -------------------------------------------------------------------------------
+    # # ---- 结果可视化 -------------------------------------------------------------------------------
 
-    # 将结果转换为矩阵
-    avg_bt_matrix = np.array([[multiscale_results[scale]["avg_bt"][lag] for lag in lags_to_test] for scale in scales])
-    avg_bg_matrix = np.array([[multiscale_results[scale]["avg_bg"][lag] for lag in lags_to_test] for scale in scales])
+    # # 将结果转换为矩阵
+    # avg_bt_matrix = np.array([[multiscale_results[scale]["avg_bt"][lag] for lag in lags_to_test] for scale in scales])
+    # avg_bg_matrix = np.array([[multiscale_results[scale]["avg_bg"][lag] for lag in lags_to_test] for scale in scales])
 
-    # 创建子图，高度比例为2:1
-    fig, axs = plt.subplots(2, 1, figsize=(3, 5), gridspec_kw={'height_ratios': [3, 1]})
+    # # 创建子图，高度比例为2:1
+    # fig, axs = plt.subplots(2, 1, figsize=(3, 5), gridspec_kw={'height_ratios': [3, 1]})
     
-    # 绘制转移熵热图
-    sns.heatmap(
-        avg_bt_matrix,
-        cmap="Greys",
-        ax=axs[0],
-        vmin=0,
-        vmax=0.3,
-        cbar=True,
-        cbar_kws={
-            "orientation": "horizontal",
-            "pad": 0.1,
-            "location": "top",
-            "label": "entropy",
-        }
-    )
-    # 设置colorbar标题字体大小
-    cbar = axs[0].collections[0].colorbar
-    cbar.set_label("熵值", fontsize=8)
+    # # 绘制转移熵热图
+    # sns.heatmap(
+    #     avg_bt_matrix,
+    #     cmap="Greys",
+    #     ax=axs[0],
+    #     vmin=0,
+    #     vmax=0.3,
+    #     cbar=True,
+    #     cbar_kws={
+    #         "orientation": "horizontal",
+    #         "pad": 0.1,
+    #         "location": "top",
+    #         "label": "entropy",
+    #     }
+    # )
+    # # 设置colorbar标题字体大小
+    # cbar = axs[0].collections[0].colorbar
+    # cbar.set_label("熵值", fontsize=8)
     
-    # 上下翻转热图
-    axs[0].invert_yaxis()
-    axs[0].set_title("自举平均值", fontsize=8)
-    axs[0].set_xticks(np.arange(0, len(lags_to_test), 5) + 0.5)
-    axs[0].set_xticklabels(lags_to_test[::5], rotation=90, fontsize=8)
-    axs[0].set_yticks(np.arange(0, len(scales), 5) + 0.5)
-    axs[0].set_yticklabels(scales[::5], fontsize=8)
-    axs[0].set_ylabel("时间尺度（秒）", fontsize=10)
+    # # 上下翻转热图
+    # axs[0].invert_yaxis()
+    # axs[0].set_title("自举平均值", fontsize=8)
+    # axs[0].set_xticks(np.arange(0, len(lags_to_test), 5) + 0.5)
+    # axs[0].set_xticklabels(lags_to_test[::5], rotation=90, fontsize=8)
+    # axs[0].set_yticks(np.arange(0, len(scales), 5) + 0.5)
+    # axs[0].set_yticklabels(scales[::5], fontsize=8)
+    # axs[0].set_ylabel("时间尺度（秒）", fontsize=10)
 
-    # 各尺度强度加和
-    entropy_sum = np.sum(avg_bt_matrix, axis=0)
-    axs[1].plot(lags_to_test, entropy_sum, linewidth=1, color="k")
-    axs[1].axvline(0, color="grey", linestyle="-", linewidth=0.5)
-    axs[1].axhline(0, color="grey", linestyle="-", linewidth=0.5)
-    axs[1].set_xlim(lags_to_test[0], lags_to_test[-1])
-    axs[1].set_title("所有尺度熵值之和", fontsize=8)
-    axs[1].set_xlabel("滞后（秒）", fontsize=8)
-    axs[1].set_ylabel("熵值之和", fontsize=8)
+    # # 各尺度强度加和
+    # entropy_sum = np.sum(avg_bt_matrix, axis=0)
+    # axs[1].plot(lags_to_test, entropy_sum, linewidth=1, color="k")
+    # axs[1].axvline(0, color="grey", linestyle="-", linewidth=0.5)
+    # axs[1].axhline(0, color="grey", linestyle="-", linewidth=0.5)
+    # axs[1].set_xlim(lags_to_test[0], lags_to_test[-1])
+    # axs[1].set_title("所有尺度熵值之和", fontsize=8)
+    # axs[1].set_xlabel("滞后（秒）", fontsize=8)
+    # axs[1].set_ylabel("熵值之和", fontsize=8)
 
-    plt.tight_layout()
+    # plt.tight_layout()
