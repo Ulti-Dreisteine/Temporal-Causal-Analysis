@@ -27,7 +27,7 @@ from s0_gen_samples import symbolize, gen_samples
 
 if __name__ == "__main__":
     a = [0.9, 0.99]
-    w = [1.0, 1.0]  # 不同的耦合强度
+    w = [0.06, 1.0]  # 不同的耦合强度
     x_series, y_series = gen_samples(size=10000, lags=[5, 10], a=a, w=w, show=True)
 
     # ---- 多尺度分析 --------------------------------------------------------------------------------
